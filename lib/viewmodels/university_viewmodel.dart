@@ -16,7 +16,7 @@ class UniversityViewModel extends StateNotifier<UniversityState> {
       return;
     }
 
-    state = state.copyWith(isLoading: true, error: null);
+    state = state.copyWith(isLoading: true, error: null, country: country);
 
     try {
       final universities = await _apiService.searchUniversitiesByCountry(
@@ -26,6 +26,7 @@ class UniversityViewModel extends StateNotifier<UniversityState> {
         isLoading: false,
         universities: universities,
         error: null,
+        country: country,
       );
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -41,26 +42,35 @@ class UniversityState {
   final List<University> universities;
   final bool isLoading;
   final String? error;
+  final String? country;
 
   UniversityState({
     required this.universities,
     required this.isLoading,
     this.error,
+    this.country,
   });
 
   factory UniversityState.initial() {
-    return UniversityState(universities: [], isLoading: false, error: null);
+    return UniversityState(
+      universities: [],
+      isLoading: false,
+      error: null,
+      country: null,
+    );
   }
 
   UniversityState copyWith({
     List<University>? universities,
     bool? isLoading,
     String? error,
+    String? country,
   }) {
     return UniversityState(
       universities: universities ?? this.universities,
       isLoading: isLoading ?? this.isLoading,
       error: error,
+      country: country,
     );
   }
 }
