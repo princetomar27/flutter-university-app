@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../views/home_screen.dart';
 import '../views/university_detail_screen.dart';
