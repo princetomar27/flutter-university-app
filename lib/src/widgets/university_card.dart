@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:country_flags/country_flags.dart';
 import '../models/university.dart';
-import '../utils/country_utils.dart';
 
 class UniversityCard extends StatelessWidget {
   final University university;
@@ -15,14 +14,8 @@ class UniversityCard extends StatelessWidget {
     this.onWebsiteTap,
   });
 
-  String _getCountryCode(String countryName) {
-    return CountryUtils.getCountryCode(countryName);
-  }
-
   @override
   Widget build(BuildContext context) {
-    final countryCode = _getCountryCode(university.country);
-
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 2,
@@ -51,7 +44,7 @@ class UniversityCard extends StatelessWidget {
                         Row(
                           children: [
                             CountryFlag.fromCountryCode(
-                              countryCode,
+                              university.alphaTwoCode ?? '',
                               height: 16,
                               width: 24,
                               borderRadius: 2,
