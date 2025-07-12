@@ -100,7 +100,15 @@ lib/
 
 ---
 
-## Screenshots (Optional)
+## Screenshots 
+<img width="761" height="784" alt="image" src="https://github.com/user-attachments/assets/c2e99cdf-7bd6-45fc-989f-1dda79828f64" />
+<img width="760" height="784" alt="image" src="https://github.com/user-attachments/assets/e1b2a778-7ed2-4f01-b916-7f1e74849e4a" />
+<img width="332" height="700" alt="image" src="https://github.com/user-attachments/assets/7db07d63-e20a-45f3-9bf8-83d53b5060b6" />
+<img width="760" height="784" alt="image" src="https://github.com/user-attachments/assets/6a3ac420-77bb-4a63-bf7f-fd87e171d2dc" />
+<img width="761" height="784" alt="image" src="https://github.com/user-attachments/assets/5794d15d-08c9-4bce-bab6-573ad475ee19" />
+<img width="761" height="784" alt="image" src="https://github.com/user-attachments/assets/6e591850-99af-4347-9486-d57cc04530ed" />
+
+
 
 ---
 
