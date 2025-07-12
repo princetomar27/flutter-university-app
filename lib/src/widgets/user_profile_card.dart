@@ -31,7 +31,7 @@ class UserProfileCard extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                       )
-                      : null,
+                      : Icon(Icons.person_add),
             ),
             const SizedBox(width: 16),
             Expanded(
