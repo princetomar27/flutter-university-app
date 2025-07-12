@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:fluttertask/src/widgets/univeristy_list_widget.dart';
+import 'package:fluttertask/src/widgets/university_search_section_widget.dart';
 import '../providers/providers.dart';
 import '../widgets/user_profile_card.dart';
-import '../widgets/university_card.dart';
 import '../viewmodels/university_viewmodel.dart';
+
+enum _HeaderState { loading, error, empty, data }
+
+enum _PaginationState { loading, loadMore, end, none }
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -14,13 +17,14 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  final TextEditingController _searchController = TextEditingController();
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    // Load all universities by default
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref
           .read(universityViewModelProvider.notifier)
@@ -28,335 +32,303 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
   void _searchUniversities() {
-    final country = _searchController.text.trim();
-    if (country.isNotEmpty) {
-      ref
-          .read(universityViewModelProvider.notifier)
-          .searchUniversities(country);
-    }
-  }
-
-  void _openWebsite(String url) async {
-    try {
-      // Ensure URL has proper scheme
-      String processedUrl = url;
-      if (!url.startsWith('http://') && !url.startsWith('https://')) {
-        processedUrl = 'https://$url';
-      }
-
-      final uri = Uri.parse(processedUrl);
-
-      // Check if URL can be launched
-      if (await canLaunchUrl(uri)) {
-        final result = await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
-
-        if (!result && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Could not open $processedUrl'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('No app found to open $processedUrl'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error opening URL: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+    ref.read(universityViewModelProvider.notifier).performSearch();
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     final userProfile = ref.watch(userProfileViewModelProvider);
     final universityState = ref.watch(universityViewModelProvider);
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          // App Bar Sliver
-          SliverAppBar(
-            title: const Text('Global University Search'),
-            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-            elevation: 2,
-            floating: true,
-            snap: true,
-          ),
-
-          // Content Slivers
-          SliverPadding(
-            padding: const EdgeInsets.all(16.0),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                // User Profile Card
-                UserProfileCard(userProfile: userProfile),
-
-                const SizedBox(height: 24),
-
-                // Search Section
-                Card(
-                  elevation: 4,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'Search Universities',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        TextField(
-                          controller: _searchController,
-                          decoration: InputDecoration(
-                            labelText: 'Enter Country Name',
-                            hintText: 'e.g., India, Japan, USA',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            prefixIcon: const Icon(Icons.search),
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                _searchController.clear();
-                                ref
-                                    .read(universityViewModelProvider.notifier)
-                                    .clearSearch();
-                              },
-                            ),
-                          ),
-                          onSubmitted: (_) => _searchUniversities(),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed:
-                              universityState.isLoading
-                                  ? null
-                                  : _searchUniversities,
-                          icon:
-                              universityState.isLoading
-                                  ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                  : const Icon(Icons.search),
-                          label: Text(
-                            universityState.isLoading
-                                ? 'Searching...'
-                                : 'Search Universities',
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-              ]),
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: CustomScrollView(
+          controller:
+              ref.read(universityViewModelProvider.notifier).scrollController,
+          slivers: [
+            // App Bar
+            SliverAppBar(
+              title: const Text('Global University Search'),
+              backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+              elevation: 2,
+              floating: true,
+              snap: true,
+              pinned: false,
             ),
-          ),
 
-          // Results Section
-          _buildResultsSliver(universityState),
-        ],
+            // User Profile and Search Section
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    // User Profile Card
+                    UserProfileCard(userProfile: userProfile),
+                    const SizedBox(height: 24),
+
+                    // Search Section
+                    RepaintBoundary(
+                      child: UniversitySearchSection(
+                        onSearch: _searchUniversities,
+                        isLoading: universityState.isLoading,
+                        key: const ValueKey('university_search_section'),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
+              ),
+            ),
+
+            // Results Header
+            _buildResultsHeader(universityState),
+
+            // Universities List using SliverList.builder for optimal performance
+            UniversitiesListWidget(universities: universityState.universities),
+
+            // Pagination Loading Indicator
+            _buildPaginationLoader(universityState),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildResultsSliver(UniversityState state) {
+  Widget _buildResultsHeader(UniversityState state) {
+    // Determine UI state
+    late final _HeaderState headerState;
     if (state.isLoading && state.universities.isEmpty) {
-      return const SliverToBoxAdapter(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Loading universities...'),
-            ],
-          ),
-        ),
-      );
+      headerState = _HeaderState.loading;
+    } else if (state.error != null && state.universities.isEmpty) {
+      headerState = _HeaderState.error;
+    } else if (state.universities.isEmpty) {
+      headerState = _HeaderState.empty;
+    } else {
+      headerState = _HeaderState.data;
     }
 
-    if (state.error != null && state.universities.isEmpty) {
-      return SliverToBoxAdapter(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-              const SizedBox(height: 16),
-              Text('Error', style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: 8),
-              Text(
-                state.error!,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
+    switch (headerState) {
+      case _HeaderState.loading:
+        return const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.all(32.0),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Loading universities...'),
+                ],
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
+            ),
+          ),
+        );
+      case _HeaderState.error:
+        return SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red),
+                  SizedBox(height: 16),
+                  Text(
+                    'Error',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    state.error!,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (state.country != null) {
+                        _searchUniversities();
+                      } else {
+                        ref
+                            .read(universityViewModelProvider.notifier)
+                            .loadAllUniversities(refresh: true);
+                      }
+                    },
+                    child: const Text('Try Again'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      case _HeaderState.empty:
+        return SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(32.0),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.school_outlined, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'No universities found',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Enter a country name and search for universities',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      case _HeaderState.data:
+        return SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                state.country != null
+                    ? RichText(
+                      text: TextSpan(
+                        text:
+                            "Found ${state.universities.length} universities in ",
+                        style: Theme.of(context).textTheme.titleMedium,
+                        children: [
+                          TextSpan(
+                            text: state.country ?? '',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                    : Text(
+                      ref
+                          .read(universityViewModelProvider.notifier)
+                          .paginationInfo,
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                if (state.country == null && state.hasMoreData)
+                  const SizedBox(height: 4),
+                if (state.country == null && state.hasMoreData)
+                  Text(
+                    'Scroll down to load more universities',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                  ),
+                if (state.country != null && state.hasMoreData)
+                  const SizedBox(height: 4),
+                if (state.country != null && state.hasMoreData)
+                  Text(
+                    'Scroll down to load more universities in ${state.country}',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                  ),
+              ],
+            ),
+          ),
+        );
+    }
+  }
+
+  Widget _buildPaginationLoader(UniversityState state) {
+    // Determine UI state
+    late final _PaginationState paginationState;
+    if (state.isLoadingNextPage) {
+      paginationState = _PaginationState.loading;
+    } else if (state.hasMoreData &&
+        state.universities.isNotEmpty &&
+        !state.isLoading) {
+      paginationState = _PaginationState.loadMore;
+    } else if (!state.hasMoreData && state.universities.isNotEmpty) {
+      paginationState = _PaginationState.end;
+    } else {
+      paginationState = _PaginationState.none;
+    }
+
+    switch (paginationState) {
+      case _PaginationState.loading:
+        return const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Center(
+              child: Column(
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 8),
+                  Text('Loading more universities...'),
+                ],
+              ),
+            ),
+          ),
+        );
+      case _PaginationState.loadMore:
+        return SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(
+              child: ElevatedButton(
                 onPressed: () {
                   if (state.country != null) {
-                    _searchUniversities();
+                    ref
+                        .read(universityViewModelProvider.notifier)
+                        .loadNextPageForCountry();
                   } else {
                     ref
                         .read(universityViewModelProvider.notifier)
-                        .loadAllUniversities(refresh: true);
+                        .loadNextPage();
                   }
                 },
-                child: const Text('Try Again'),
+                child: Text(
+                  state.country != null
+                      ? 'Load More Universities in ${state.country}'
+                      : 'Load More Universities',
+                ),
               ),
-            ],
+            ),
           ),
-        ),
-      );
-    }
-
-    if (state.universities.isEmpty) {
-      return SliverToBoxAdapter(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.school_outlined, size: 64, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              Text(
-                'No universities found',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Enter a country name and search for universities',
-                textAlign: TextAlign.center,
+        );
+      case _PaginationState.end:
+        return SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(
+              child: Text(
+                state.country != null
+                    ? 'All universities in ${state.country} loaded'
+                    : 'All universities loaded',
                 style: Theme.of(
                   context,
                 ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
               ),
-            ],
+            ),
           ),
-        ),
-      );
+        );
+      case _PaginationState.none:
+        return const SliverToBoxAdapter(child: SizedBox.shrink());
     }
-
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          // Header for results
-          if (index == 0) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 8.0,
-              ),
-              child:
-                  state.country != null
-                      ? RichText(
-                        text: TextSpan(
-                          text:
-                              "Found ${state.universities.length} universities in ",
-                          style: Theme.of(context).textTheme.titleMedium,
-                          children: [
-                            TextSpan(
-                              text: state.country ?? '',
-                              style: Theme.of(
-                                context,
-                              ).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                      : Text(
-                        'All Universities (${state.universities.length} loaded)',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-            );
-          }
-
-          // Loading indicator for pagination
-          if (index == state.universities.length + 1) {
-            if (state.hasMoreData && state.country == null) {
-              // Trigger load more when reaching the end
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (!state.isLoading) {
-                  ref.read(universityViewModelProvider.notifier).loadNextPage();
-                }
-              });
-
-              return const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
-            return null;
-          }
-
-          // University card
-          final universityIndex = index - 1;
-          if (universityIndex < state.universities.length) {
-            final university = state.universities[universityIndex];
-            return Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 4.0,
-              ),
-              child: UniversityCard(
-                university: university,
-                onTap: () {
-                  context.pushNamed(
-                    'university_detail',
-                    pathParameters: {'name': university.name},
-                  );
-                },
-                onWebsiteTap: () {
-                  if (university.website != null) {
-                    _openWebsite(university.website!);
-                  }
-                },
-              ),
-            );
-          }
-
-          return null;
-        },
-        childCount:
-            state.universities.length +
-            (state.hasMoreData && state.country == null ? 2 : 1),
-      ),
-    );
   }
 }
